@@ -18,6 +18,7 @@
 #
 class PostImage < ApplicationRecord
     belongs_to :post
+    mount_uploader :file_path, PostImageUploader
 
     counter_culture :post
 end

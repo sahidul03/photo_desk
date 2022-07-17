@@ -6,6 +6,7 @@
 #  body              :text(65535)      not null
 #  comments_count    :integer          default(0), not null
 #  post_images_count :integer          default(0), not null
+#  status            :integer          default(0), not null
 #  title             :string(255)
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null

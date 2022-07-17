@@ -40,7 +40,7 @@ gem 'counter_culture', '~> 2.0'
 gem "carrierwave"
 gem "carrierwave-aws"
 gem "kaminari"
-# gem "fog-aws"
+gem "fog-aws"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
