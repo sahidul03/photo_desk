@@ -1,8 +1,8 @@
-class PostsController < ApplicationController
+class V1::PostsController < ApplicationController
   before_action :set_post, only: [:show]
 
   def index
-    @posts = Post.preload(:post_images).published.latest_top.page(params[:page])
+    @posts = Post.eager_load(:post_images).published.latest_top.page(params[:page])
   end
 
   def create

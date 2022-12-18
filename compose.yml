@@ -1,5 +1,5 @@
 services:
-  backend: &backend
+  backend:
     build:
       dockerfile: Dockerfile
     command: rails s -b 0.0.0.0
