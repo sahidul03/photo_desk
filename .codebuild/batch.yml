@@ -1,0 +1,45 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    ECS_TASK_FAMILY_PREFIX: batch
+
+phases:
+  build:
+    commands:
+      #- COMMIT_ID=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION)
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
+      - unzip awscliv2.zip
+      - ./aws/install --bin-dir /root/.pyenv/shims --install-dir /usr/local/aws-cli --update
+      - >-
+        if [ -f github_sha ]; then
+          COMMIT_ID=$(cat github_sha);
+        else
+          COMMIT_ID=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION);
+        fi
+      - COMMIT_ID="${COMMIT_ID//./}"
+      - aws ecs describe-task-definition --task-definition $FAMILY > /tmp/current.json
+      - jq ".taskDefinition.containerDefinitions[0].image = \"$ECR_REPOSITORY_URL:$COMMIT_ID\"" /tmp/current.json > /tmp/new.json
+      - jq ".taskDefinition.containerDefinitions" /tmp/new.json > /tmp/container-definitions.json
+      - >-
+        aws ecs register-task-definition \
+          --family $FAMILY \
+          --task-role-arn $(jq -r ".taskDefinition.taskRoleArn" /tmp/new.json) \
+          --execution-role-arn $(jq -r ".taskDefinition.executionRoleArn" /tmp/new.json) \
+          --network-mode $(jq -r ".taskDefinition.networkMode" /tmp/new.json) \
+          --container-definitions file:///tmp/container-definitions.json \
+          --cpu $(jq -r ".taskDefinition.cpu" /tmp/new.json) \
+          --memory $(jq -r ".taskDefinition.memory" /tmp/new.json) \
+          --runtime-platform cpuArchitecture=ARM64,operatingSystemFamily=LINUX
+      - >-
+        for event_rule in $CLOUDWATCH_EVENT_RULES;
+        do
+          task_def_arn=$(aws ecs list-task-definitions --family $FAMILY --sort DESC | jq -r .taskDefinitionArns[0]);
+          targets=$(aws events list-targets-by-rule --rule $event_rule | jq '.Targets | length');
+          for ((i=0; i<$targets; i++));
+          do
+            aws events list-targets-by-rule --rule $event_rule | jq ".Targets[$i].EcsParameters.TaskDefinitionArn = \"$task_def_arn\"" > /tmp/targets.json;
+            aws events put-targets --rule $event_rule --cli-input-json file:///tmp/targets.json;
+          done;
+        done;

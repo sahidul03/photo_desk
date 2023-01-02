@@ -1,0 +1,62 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "puma",
+      "image": "{{ must_env `IMAGE` }}",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true,
+      "command": ["bundle", "exec", "puma"],
+      "environment": [],
+      "environmentFiles": [
+        {
+          "value": "{{ must_env `ENVIRONMENT_FILE_ARN` }}",
+          "type": "s3"
+        }
+      ],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "secrets": [
+        {
+          "name": "MYSQL_HOST",
+          "valueFrom": "/mart/MYSQL_HOST"
+        },
+        {
+          "name": "MYSQL_PASSWORD",
+          "valueFrom": "/mart/MYSQL_PASSWORD"
+        },
+        {
+          "name": "MYSQL_USER",
+          "valueFrom": "/mart/MYSQL_USER"
+        }
+      ],
+      "readonlyRootFilesystem": false,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "{{ must_env `FAMILY` }}",
+          "awslogs-region": "ap-northeast-1",
+          "awslogs-stream-prefix": "{{ must_env `AWSLOGS_STREAM_PREFIX` }}"
+        }
+      }
+    }
+  ],
+  "family": "{{ must_env `FAMILY` }}",
+  "taskRoleArn": "arn:aws:iam::{{ must_env `AWS_ACCOUNT_ID` }}:role/ecs-task",
+  "executionRoleArn": "arn:aws:iam::{{ must_env `AWS_ACCOUNT_ID` }}:role/mart-ecs-task-execution",
+  "networkMode": "awsvpc",
+  "compatibilities": ["EC2", "FARGATE"],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "2048",
+  "runtimePlatform": {
+    "operatingSystemFamily": "LINUX",
+    "cpuArchitecture": "ARM64"
+  }
+}

@@ -1,0 +1,40 @@
+version: 0.2
+
+env:
+  variables:
+    DOCKERFILE: Dockerfile
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.14
+  pre_build:
+    commands:
+      - curl -L https://github.com/kayac/go-config/archive/refs/tags/v0.6.0.zip > merge-env-config.zip
+      - unzip merge-env-config.zip
+      - cd ./go-config-0.6.0/cmd/merge-env-config && go build -o merge-env-config main.go && cd -
+      - mv ./go-config-0.6.0/cmd/merge-env-config/merge-env-config ./merge-env-config
+      - chmod +x merge-env-config
+      - aws s3 sync .codebuild/$STAGE s3://$BUCKET_NAME_WEB_API_ENVIRONMENT_FILE --delete
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - >-
+        if [ -f github_sha ]; then
+          COMMIT_ID=$(cat github_sha);
+        else
+          COMMIT_ID=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION);
+        fi
+      - COMMIT_ID="${COMMIT_ID//./}"
+      - TAG=$ECR_REPOSITORY_URL:$COMMIT_ID
+  build:
+    commands:
+      - docker build --platform linux/arm64 -f $DOCKERFILE -t $TAG .
+      - docker push $TAG
+  post_build:
+    commands:
+      - printf '{"Version":"1.0","ImageURI":"%s"}' $TAG > imageDetail.json
+      - ENVIRONMENT_FILE_ARN="arn:aws:s3:::${BUCKET_NAME_WEB_API_ENVIRONMENT_FILE}/web_api.env" AWSLOGS_STREAM_PREFIX=${COMMIT_ID} IMAGE=${TAG} ./merge-env-config -json .codebuild/$STAGE/taskdef.json.tmpl > taskdef.json
+
+artifacts:
+  files:
+    - imageDetail.json
+    - taskdef.json

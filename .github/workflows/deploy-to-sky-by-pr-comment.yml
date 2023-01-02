@@ -1,0 +1,80 @@
+name: deploy-to-another-sky-by-pr-comment
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  push-to-bucket:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+    if: github.event.issue.pull_request && (contains(github.event.comment.body, 'deploy-to-sky1') || contains(github.event.comment.body, 'deploy-to-sky2') || contains(github.event.comment.body, 'deploy-to-sky3'))
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@master
+        with:
+          aws-region: ap-northeast-1
+          role-to-assume: arn:aws:iam::171178482625:role/cas-github-actions
+          role-session-name: MySessionName
+
+      - run: aws sts get-caller-identity
+      - uses: actions/github-script@v6
+        id: set-target-branch
+        with:
+          result-encoding: json
+          script: |
+            const pull_request = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            })
+            return pull_request.data.head
+      - name: pull-requests-parse
+        id: pull-requests-parse
+        run: |
+          echo "::set-output name=ref::${{ fromJSON(steps.set-target-branch.outputs.result)['ref'] }}"
+          echo "::set-output name=sha::${{ fromJSON(steps.set-target-branch.outputs.result)['sha'] }}"
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.pull-requests-parse.outputs.ref }}
+      - run: |
+          echo "MYSQL_DATABASE_NAME=cas_dev_sky1" >> backend/.codebuild/dev/web_api.env
+          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky1" >> backend/.codebuild/dev/web_api.env
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky1')
+      - run: |
+          echo "MYSQL_DATABASE_NAME=cas_dev_sky2" >> backend/.codebuild/dev/web_api.env
+          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky2" >> backend/.codebuild/dev/web_api.env
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky2')
+      - run: |
+          echo "MYSQL_DATABASE_NAME=cas_dev_sky3" >> backend/.codebuild/dev/web_api.env
+          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky3" >> backend/.codebuild/dev/web_api.env
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky3')
+      - run: |
+          cd backend/
+          echo "${{ steps.pull-requests-parse.outputs.sha }}" > github_sha
+          zip -r source.zip . -x *.git/*
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky')
+      # - run: |
+      #     echo "${{ steps.pull-requests-parse.outputs.sha }}" > github_sha
+      #     zip -r source.zip .
+      #   if: contains(github.event.comment.body, 'frontend-deploy-to-sky')
+      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky1.zip --body backend/source.zip
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky1')
+      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky2.zip --body backend/source.zip
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky2')
+      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky3.zip --body backend/source.zip
+        if: contains(github.event.comment.body, 'web-api-deploy-to-sky3')
+      # - run: aws s3api put-object --bucket cas-codebuild-source-dev --key frontend-sky1.zip --body source.zip
+      #   if: contains(github.event.comment.body, 'frontend-deploy-to-sky1')
+      # - run: aws s3api put-object --bucket cas-codebuild-source-dev --key frontend-sky2.zip --body source.zip
+      #   if: contains(github.event.comment.body, 'frontend-deploy-to-sky2')
+      # - run: aws s3api put-object --bucket cas-codebuild-source-dev --key frontend-sky3.zip --body source.zip
+      #   if: contains(github.event.comment.body, 'frontend-deploy-to-sky3')
+      - uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,author # selectable (default: repo,message)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} # required

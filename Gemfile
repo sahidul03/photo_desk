@@ -42,6 +42,7 @@ gem "carrierwave-aws"
 gem "kaminari"
 gem "fog-aws"
 gem "faker"
+gem "aws-sdk-rails"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
