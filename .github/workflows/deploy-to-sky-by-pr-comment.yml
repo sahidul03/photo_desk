@@ -40,19 +40,18 @@ jobs:
         with:
           ref: ${{ steps.pull-requests-parse.outputs.ref }}
       - run: |
-          echo "MYSQL_DATABASE_NAME=cas_dev_sky1" >> backend/.codebuild/dev/web_api.env
-          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky1" >> backend/.codebuild/dev/web_api.env
+          echo "MYSQL_DATABASE_NAME=cas_dev_sky1" >> .codebuild/dev/web_api.env
+          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky1" >> .codebuild/dev/web_api.env
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky1')
       - run: |
-          echo "MYSQL_DATABASE_NAME=cas_dev_sky2" >> backend/.codebuild/dev/web_api.env
-          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky2" >> backend/.codebuild/dev/web_api.env
+          echo "MYSQL_DATABASE_NAME=cas_dev_sky2" >> .codebuild/dev/web_api.env
+          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky2" >> .codebuild/dev/web_api.env
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky2')
       - run: |
-          echo "MYSQL_DATABASE_NAME=cas_dev_sky3" >> backend/.codebuild/dev/web_api.env
-          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky3" >> backend/.codebuild/dev/web_api.env
+          echo "MYSQL_DATABASE_NAME=cas_dev_sky3" >> .codebuild/dev/web_api.env
+          echo "AWS_SQS_HOST=https://sqs.ap-northeast-1.amazonaws.com/171178482625/cas-web-api-sqs-sky3" >> .codebuild/dev/web_api.env
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky3')
       - run: |
-          cd backend/
           echo "${{ steps.pull-requests-parse.outputs.sha }}" > github_sha
           zip -r source.zip . -x *.git/*
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky')
@@ -60,11 +59,11 @@ jobs:
       #     echo "${{ steps.pull-requests-parse.outputs.sha }}" > github_sha
       #     zip -r source.zip .
       #   if: contains(github.event.comment.body, 'frontend-deploy-to-sky')
-      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky1.zip --body backend/source.zip
+      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky1.zip --body source.zip
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky1')
-      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky2.zip --body backend/source.zip
+      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky2.zip --body source.zip
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky2')
-      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky3.zip --body backend/source.zip
+      - run: aws s3api put-object --bucket cas-codebuild-source-dev --key backend-sky3.zip --body source.zip
         if: contains(github.event.comment.body, 'web-api-deploy-to-sky3')
       # - run: aws s3api put-object --bucket cas-codebuild-source-dev --key frontend-sky1.zip --body source.zip
       #   if: contains(github.event.comment.body, 'frontend-deploy-to-sky1')
